@@ -10,6 +10,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Components\Validation;
 use App\Components\Mailer;
 use Psr\Log\LoggerInterface;
+use \RedBeanPHP\R;
 
 abstract class BaseController
 {
@@ -48,9 +49,39 @@ abstract class BaseController
 		return bin2hex(openssl_random_pseudo_bytes(16));
   }
 
+  protected function getUserID($uid) {
+    $result = false;
+    $rb  = R::findOne( 'users', 'uid = ?', [$uid]);
+    if (!empty($rb->id)) {
+      $result = $rb->id; 
+    }
+		return $result;
+  }
+
+  protected function getModuleID($args) {
+    $id = ModuleController::getModuleByUID($args);
+    return $id;
+  }
+
+  protected function getTemplateID($args) {
+    $id = EmailTemplateController::getTemplateByUID($args);
+    return $id;
+  }
+
+  protected function getRolePermissionID($uid) {
+    $id = PermissionController::getRolePermissionByUID($uid);
+    return $id;
+  }  
+
   protected function getJwtToken($data) {
 		$jwt = new JwtToken($this->settings['jwt']);
     return $jwt->getJwtToken($data);
+  }
+
+  protected function getJwtTokenData($headers) {
+    $token = str_replace('Bearer ', '', $headers['Authorization'][0]);
+    $jwt = new JwtToken($this->settings['jwt']);
+    return $jwt->getJwtData($token);
   }
   
   protected function validateData($data) {

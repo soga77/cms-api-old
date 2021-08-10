@@ -15,7 +15,7 @@ return function(App $app) {
   $logger = $app->getContainer()->get(LoggerInterface::class);
   //JWT
   $app->add(new Tuupola\Middleware\JwtAuthentication([
-    "ignore"=>["/site/user/*", "/site/page/*", "/site/user/register"],
+    "ignore"=>["/site/user/exist", "/site/user/login", "/site/page/*", "/site/user/register", "/admin/auth/login"],
     "secret"=> $settings['secret'],
     "secure" => false,
     "logger" => $logger,
@@ -66,6 +66,7 @@ return function(App $app) {
 
     $response = $response->withHeader('Access-Control-Allow-Origin', '*');
     $response = $response->withHeader('Access-Control-Allow-Methods', implode(',', $methods));
+    // $response = $response->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     $response = $response->withHeader('Access-Control-Allow-Headers', $requestHeaders);
 
     // Optional: Allow Ajax CORS requests with Authorization header

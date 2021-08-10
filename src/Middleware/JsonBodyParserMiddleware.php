@@ -24,18 +24,22 @@ class JsonBodyParserMiddleware implements MiddlewareInterface
         return $handler->handle($request);
     }
 
+    
+
     private function sanitizeJson (array $resArr) {
-      $resArr = array_map('trim', $resArr);
+      array_walk_recursive($resArr,function(&$v){$v=trim($v);});
+      $newArr = array();
       foreach ($resArr as $key => $value) {
-        if(strpos($key, 'html_') === 0){
+        if (is_array($value)) {
+          $newArr[$key] = filter_var_array($value,FILTER_SANITIZE_STRING);
+        } elseif (strpos($key, 'html_') === 0) {
           $newArr[substr($key, 5)] = htmlspecialchars($value, ENT_QUOTES);
-        }
-        elseif (strpos($key, 'raw_') === 0) {
+        } elseif (strpos($key, 'raw_') === 0) {
           $newArr[substr($key, 4)] = $value;
         } else {
           $newArr[$key] = filter_var($value,FILTER_SANITIZE_STRING);
         }
-      }  
+      }
       return $newArr;
     }
 

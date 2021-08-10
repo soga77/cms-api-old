@@ -19,12 +19,7 @@ class UserController extends BaseController
     if ($rb) {
       $hashPwd = $this->getPasswordById($rb->id);
       if (password_verify($password, $hashPwd)) {
-        if ($rb->status === 'not_verified') {
-          $type = "EMAIL_NOT_VERIFIED";
-          $resArr = [ "uid" => $rb->uid ];
-          $logArr = $resArr;          
-        }
-        elseif ($rb->status === 'locked') {
+        if ($rb->status === 'locked') {
           $type = "ACCOUNT_LOCKED";
           $resArr = [ "uid" => $rb->uid ];
           $logArr = $resArr;
@@ -38,13 +33,14 @@ class UserController extends BaseController
           $success = true;
           $type = "USER_AUTHENTICATED";
           $resArr = [ 
-            "first_name" => $rb->first_name,
+            "name" => $rb->first_name,
             "email" => $rb->email,
+            "verified" => $rb->verified,
             "uid" => $rb->uid,
           ];
           $token = $this->getJwtToken($resArr);
           $resArr['token'] = $token;
-          $logArr = [ "uid" => $rb->uid ];
+          $logArr = [ "user_id" => $rb->uid ];
         } else {
           $type = "INVALID_LOGIN_STATUS";
           $resArr = [ "uid" => $rb->uid ];
@@ -53,7 +49,7 @@ class UserController extends BaseController
       } else {
         $type = "INVALID_LOGIN_PASSWORD";
         $resArr = [ "uid" => $rb->uid ];
-        $logArr = $resArr;
+        $logArr = [ "user_id" => $rb->uid ];
       }
     } else {
       $type = "INVALID_LOGIN_EMAIL";
@@ -69,7 +65,9 @@ class UserController extends BaseController
   
   public function register(Request $request, Response $response) {
     $data = $request->getParsedBody();
-    $data['status'] = 'not_verified';
+    $data['verified'] = 0;
+    $data['status'] = 'active';
+    $data['last_name'] = '';
     $status = 500;
     $success = false;
 
@@ -99,14 +97,14 @@ class UserController extends BaseController
       $status = 201;
       $type = "USER_REGISTERED";
       $resArr = [ "name" => $data['first_name'], "uid" => $uid ];
-      $logArr = [ 'uid' => $uid ];
+      $logArr = [ "user_id" => $uid ];
     }
 
     else {
       $status = 200;
       $type = "USER_NOT_REGISTERED";
       $resArr = [ "name" => "VALIDATION_ERROR", "value" => $vResult ];
-      $logArr = [ 'validation' => $vResult ];
+      $logArr = [ "validation" => $vResult ];
     }
     // Return response
     $this->logger->info($type, $logArr);
@@ -135,16 +133,31 @@ class UserController extends BaseController
     return $this->respondWithData($response,$result,$status);
   }
 
+  public function user (Request $request, Response $response) {
+    // Authorization
+    $headers = $request->getHeaders();
+    $data = $this->getJwtTokenData($headers);
+    $result = [ "success" => true, "status" => 200, "type" => 'token', "response" => $data ];
+    return $this->respondWithData($response,$result);
+  }
+
+  public function logout (Request $request, Response $response) {
+    // Authorization
+    $headers = $request->getHeaders();
+    $data = $this->getJwtTokenData($headers);
+    $result = [ "success" => true, "status" => 200, "type" => 'token', "response" => $data ];
+    return $this->respondWithData($response,$result);
+  }
+
   private function addUser($data) {
     $currentDate = date('Y-m-d H:i:s');
     $uid = $this->getUid();
     $rb = R::dispense('users');
     $rb->uid = $uid;
     $rb->first_name = $data['first_name'];
-    if (isset($data['last_name'])) {
-      $rb->last_name = $data['last_name'];
-    }    
+    $rb->last_name = $data['last_name'];   
     $rb->email = $data['email'];
+    $rb->verified = $data['verified'];
     $rb->status = $data['status'];
     $rb->created_date = $currentDate;
     $rb->modified_date = $currentDate;
@@ -178,7 +191,10 @@ class UserController extends BaseController
     ];
     $param['confirm_password'] = [
       "value" => $data['confirm_password'],
-      "match" => $data['password'],
+      "value" => [
+        "match" => $data['password'],
+        "value" => $data['confirm_password'],
+      ],
       "type" => [ 
         "isNotMatch" => "Passwords do not match"
       ]
