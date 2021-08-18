@@ -11,7 +11,7 @@ class NotificationController extends BaseController
   public function add(Request $request, Response $response) {
     // Authorization
     $headers = $request->getHeaders();
-    $auth = $this->getJwtTokenData($headers);
+    $tokedata = $this->getJwtTokenData($headers);
 
     $data = $request->getParsedBody();
     $status = 500;
@@ -22,7 +22,7 @@ class NotificationController extends BaseController
 
     // Add template
     if (empty($vResult)) {
-      $userId = $this->getUserId($auth['uid']);
+      $userId = $this->getUserId($tokedata['uid']);
       $moduleID = $this->getModuleID($data);
       $templateArr = $this->getTemplateID($data);
       $templateID = $templateArr['id'];
@@ -44,14 +44,14 @@ class NotificationController extends BaseController
       $success = true;
       $status = 201;
       $type = "NOTIFICATION_ADDED";
-      $logArr = [ "user_id" => $auth['uid'] ];
+      $logArr = [ "user_id" => $tokedata['uid'] ];
       $resArr = ["uid" => $uid, "template_name" => $templateName, "alias" => $data['alias'], "modified_date" => $currentDate];     
     } 
     // Set validation error(s)
     else {
       $status = 200;
       $type = "NOTIFICATION_VALIDATION_ERROR";
-      $logArr = [ "user_id" => $auth['uid'],  "validation" => $vResult ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "validation" => $vResult ];
       $resArr = [ "validation" => $vResult ];
     }
     // Return response
@@ -95,7 +95,7 @@ class NotificationController extends BaseController
   public function edit(Request $request, Response $response) {
     // Authorization
     $headers = $request->getHeaders();
-    $auth = $this->getJwtTokenData($headers);
+    $tokedata = $this->getJwtTokenData($headers);
 
     $data = $request->getParsedBody();
     $id = $this->getID($data); //get record to update
@@ -134,7 +134,7 @@ class NotificationController extends BaseController
 
       if (empty($vResult)) {        
         if (!empty($cArr)) {
-          $userId = $this->getUserID($auth['uid']);
+          $userId = $this->getUserID($tokedata['uid']);
           $currentDate = date('Y-m-d H:i:s');
           $rb->modified_date = $currentDate;
           $rb->modified_by = $userId;
@@ -143,24 +143,24 @@ class NotificationController extends BaseController
           $success = true;
           $status = 201;
           $type = "NOTIFICATION_UPDATED";
-          $logArr = [ "user_id" => $auth['uid'], "notification_id" => $data['uid'], "changes" => implode(", ", $cArr)];
+          $logArr = [ "user_id" => $tokedata['uid'], "notification_id" => $data['uid'], "changes" => implode(", ", $cArr)];
           $resArr = ["uid" => $data['uid'] , "template_name" => $templateName, "alias" => $data['alias'], "modified_date" => $currentDate, "changes" => $cArr ];
         } else {
           $status = 200;
           $type = "NOTIFICATION_NO_CHANGES";
-          $logArr = [ "user_id" => $auth['uid'], "notification_id" => $data['uid'] ];
+          $logArr = [ "user_id" => $tokedata['uid'], "notification_id" => $data['uid'] ];
           $resArr = [ "description" => "No changes made to notification" ]; 
         }
       } else {
         $status = 200;
         $type = "NOTIFICATION_VALIDATION_ERROR";
-        $logArr = [ "user_id" => $auth['uid'], "notification_id" => $data['uid'], "validation" => $vResult ];
+        $logArr = [ "user_id" => $tokedata['uid'], "notification_id" => $data['uid'], "validation" => $vResult ];
         $resArr = [ "validation" => $vResult ]; 
       }      
     } else {
       $status = 200;
       $type = "NOTIFICATION_NOT_UPDATED";
-      $logArr = [ "user_id" => $auth['uid'], "notification_id" => $data['uid'] ];
+      $logArr = [ "user_id" => $tokedata['uid'], "notification_id" => $data['uid'] ];
       $resArr = [ "description" => "Invalid request recieved" ]; 
     }       
     // Return response
@@ -228,7 +228,7 @@ class NotificationController extends BaseController
   public function delete(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $auth = $this->getJwtTokenData($headers);
+    $tokedata = $this->getJwtTokenData($headers);
 
     $status = 500;
     $success = false;
@@ -243,12 +243,12 @@ class NotificationController extends BaseController
       $success = true;
       $status = 200;
       $type = "NOTIFICATION_DELETED";
-      $logArr = [ "user_id" => $auth['uid'],  "notification_id" => $args['uid'], "notification_alias" => $alias ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "notification_id" => $args['uid'], "notification_alias" => $alias ];
       $resArr = [ "alias" => $alias ];
     } else{
       $status = 200;
       $type = "NOTIFICATION_NOT_DELETED";
-      $logArr = [ "user_id" => $auth['uid'],  "notification_id" => $args['uid'], ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "notification_id" => $args['uid'], ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response
@@ -260,7 +260,7 @@ class NotificationController extends BaseController
   public function item(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $auth = $this->getJwtTokenData($headers);
+    $tokedata = $this->getJwtTokenData($headers);
 
     $id = $this->getID($args);
     $status = 500;
@@ -278,12 +278,12 @@ class NotificationController extends BaseController
       $success = true;
       $status = 200;
       $type = "NOTIFICATION_FOUND";
-      $logArr = [ "user_id" => $auth['uid'],  "notification_id" => $args['uid'], "notification_alias" => $rb[0]['alias'] ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "notification_id" => $args['uid'], "notification_alias" => $rb[0]['alias'] ];
       $resArr = $rb[0];
     } else{
       $status = 200;
       $type = "NOTIFICATION_NOT_FOUND";
-      $logArr = [ "user_id" => $auth['uid'],  "notification_id" => $args['uid'], ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "notification_id" => $args['uid'], ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response

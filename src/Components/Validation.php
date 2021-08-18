@@ -54,7 +54,7 @@ class Validation
   private function isNotMediumPwd($value) {
     return (!preg_match(self::$mediumPwd, $value['value'])) ? true : false;
   }
-  private function isNotEmailExist($value) {
+  private function isEmailExist($value) {
     $rb  = R::findOne( "users", "email = ?", [$value['value']]);
     return (!empty($rb->id)) ? true : false;
   }  

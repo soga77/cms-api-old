@@ -28,9 +28,9 @@ return function (App $app) {
     //   $group->post('/exist', PageController::class . ':exist');
     // });
     $group->group('/auth', function (Group $group) {
-      $group->post('/login', UserController::class . ':login');
-      $group->post('/logout', UserController::class . ':logout');
-      $group->get('/user', UserController::class . ':user');
+      $group->post('/login', UserAuth::class . ':login');
+      $group->post('/logout', UserAuth::class . ':logout');
+      $group->get('/user', UserAuth::class . ':user');
     });
 
     $group->group('/email-templates', function (Group $group) {
@@ -88,6 +88,7 @@ return function (App $app) {
     $group->group('/roles', function (Group $group) {
       $group->get('/item/{uid}', RoleController::class . ':item');
       $group->get('/items', RoleController::class . ':items');
+      $group->get('/list', RoleController::class . ':list');
       $group->get('/permissions', RoleController::class . ':permissions');
       $group->post('/add',  RoleController::class . ':add');
       $group->post('/edit',  RoleController::class . ':edit');
@@ -95,6 +96,17 @@ return function (App $app) {
       $group->delete('/delete/{uid}',  RoleController::class . ':delete'); 
       $group->post('/name-exist',  RoleController::class . ':nameExist');     
       $group->post('/alias-exist',  RoleController::class . ':aliasExist');
+    });
+
+    $group->group('/users', function (Group $group) {
+      // $group->get('/item/{uid}', UserController::class . ':item');
+      $group->get('/items', UserController::class . ':items');
+      // $group->get('/roles', UserController::class . ':roles');
+      $group->post('/add',  UserController::class . ':add');
+      // $group->post('/edit',  UserController::class . ':edit');
+      // $group->delete('/delete/{uid}',  UserController::class . ':delete'); 
+      $group->post('/email-exist',  UserController::class . ':emailExist');     
+      // $group->post('/alias-exist',  UserController::class . ':aliasExist');
     });
   });
 

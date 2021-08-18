@@ -11,7 +11,7 @@ class EmailTemplateController extends BaseController
   public function add(Request $request, Response $response) {
     // Authorization
     $headers = $request->getHeaders();
-    $auth = $this->getJwtTokenData($headers);
+    $tokedata = $this->getJwtTokenData($headers);
 
     $data = $request->getParsedBody();
     $status = 500;
@@ -22,7 +22,7 @@ class EmailTemplateController extends BaseController
 
     // Add template
     if (empty($vResult)) {
-      $userId = $this->getUserId($auth['uid']);
+      $userId = $this->getUserId($tokedata['uid']);
       $currentDate = date('Y-m-d H:i:s');
       $uid = $this->getUid();
       $rb = R::dispense('emailtemplates');
@@ -42,14 +42,14 @@ class EmailTemplateController extends BaseController
       $success = true;
       $status = 201;
       $type = "EMAIL_TEMPLATE_ADDED";
-      $logArr = [ "user_id" => $auth['uid'] ];
+      $logArr = [ "user_id" => $tokedata['uid'] ];
       $resArr = ["uid" => $uid, "name" => $data['name'], "subject" => $data['subject'], "created_date" => $currentDate, "modified_date" => $currentDate];     
     } 
     // Set validation error(s)
     else {
       $status = 200;
       $type = "EMAIL_TEMPLATE_VALIDATION_ERROR";
-      $logArr = [ "user_id" => $auth['uid'],  "validation" => $vResult ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "validation" => $vResult ];
       $resArr = [ "validation" => $vResult ];
     }
     // Return response
@@ -83,7 +83,7 @@ class EmailTemplateController extends BaseController
   public function edit(Request $request, Response $response) {
     // Authorization
     $headers = $request->getHeaders();
-    $auth = $this->getJwtTokenData($headers);
+    $tokedata = $this->getJwtTokenData($headers);
 
     $data = $request->getParsedBody();
     $id = $this->getID($data); //get record to update
@@ -124,7 +124,7 @@ class EmailTemplateController extends BaseController
       if (empty($vResult)) {        
         if (!empty($cArr)) {
           $this->createVersion($id);
-          $userId = $this->getUserId($auth['uid']);
+          $userId = $this->getUserId($tokedata['uid']);
           $currentDate = date('Y-m-d H:i:s');
           $rb->modified_date = $currentDate;
           $rb->modified_by = $userId;
@@ -133,24 +133,24 @@ class EmailTemplateController extends BaseController
           $success = true;
           $status = 201;
           $type = "EMAIL_TEMPLATE_UPDATED";
-          $logArr = [ "user_id" => $auth['uid'], "template_id" => $data['uid'], "changes" => implode(", ", $cArr)];
+          $logArr = [ "user_id" => $tokedata['uid'], "template_id" => $data['uid'], "changes" => implode(", ", $cArr)];
           $resArr = ["uid" => $data['uid'] ,"name" => $data['name'], "subject" => $data['subject'], "created_date" => $createDate, "modified_date" => $currentDate, "changes" => $cArr ]; 
         } else {
           $status = 200;
           $type = "EMAIL_TEMPLATE_NO_CHANGES";
-          $logArr = [ "user_id" => $auth['uid'], "template_id" => $data['uid'] ];
+          $logArr = [ "user_id" => $tokedata['uid'], "template_id" => $data['uid'] ];
           $resArr = [ "description" => "No changes were made template not updated" ]; 
         }
       } else {
         $status = 200;
         $type = "EMAIL_TEMPLATE_VALIDATION_ERROR";
-        $logArr = [ "user_id" => $auth['uid'], "template_id" => $data['uid'], "validation" => $vResult ];
+        $logArr = [ "user_id" => $tokedata['uid'], "template_id" => $data['uid'], "validation" => $vResult ];
         $resArr = [ "validation" => $vResult ]; 
       }      
     } else {
       $status = 200;
       $type = "EMAIL_TEMPLATE_NOT_UPDATED";
-      $logArr = [ "user_id" => $auth['uid'], "template_id" => $data['uid'] ];
+      $logArr = [ "user_id" => $tokedata['uid'], "template_id" => $data['uid'] ];
       $resArr = [ "description" => "Invalid request recieved" ]; 
     }       
     // Return response
@@ -283,7 +283,7 @@ class EmailTemplateController extends BaseController
   public function delete(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $auth = $this->getJwtTokenData($headers);
+    $tokedata = $this->getJwtTokenData($headers);
 
     $status = 500;
     $success = false;
@@ -301,12 +301,12 @@ class EmailTemplateController extends BaseController
       $success = true;
       $status = 200;
       $type = "EMAIL_TEMPLATE_DELETED";
-      $logArr = [ "user_id" => $auth['uid'],  "template_id" => $args['uid'], "template_name" => $name ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "template_id" => $args['uid'], "template_name" => $name ];
       $resArr = [ "name" => $name ];
     } else{
       $status = 200;
       $type = "EMAIL_TEMPLATE_NOT_DELETED";
-      $logArr = [ "user_id" => $auth['uid'],  "template_id" => $args['uid'], ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "template_id" => $args['uid'], ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response
@@ -318,7 +318,7 @@ class EmailTemplateController extends BaseController
   public function item(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $auth = $this->getJwtTokenData($headers);
+    $tokedata = $this->getJwtTokenData($headers);
 
     $id = $this->getID($args);
     $status = 500;
@@ -338,12 +338,12 @@ class EmailTemplateController extends BaseController
       $success = true;
       $status = 200;
       $type = "EMAIL_TEMPLATE_FOUND";
-      $logArr = [ "user_id" => $auth['uid'],  "template_id" => $args['uid'], "template_name" => $rb[0]['name'] ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "template_id" => $args['uid'], "template_name" => $rb[0]['name'] ];
       $resArr = $rb[0];
     } else{
       $status = 200;
       $type = "EMAIL_TEMPLATE_NOT_FOUND";
-      $logArr = [ "user_id" => $auth['uid'],  "template_id" => $args['uid'], ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "template_id" => $args['uid'], ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response
@@ -355,14 +355,14 @@ class EmailTemplateController extends BaseController
   public function duplicate(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $auth = $this->getJwtTokenData($headers);
+    $tokedata = $this->getJwtTokenData($headers);
 
     $oid = $this->getID($args);
     $status = 500;
     $success = false;
     
     if ($oid) {
-      $userId = $this->getUserId($auth['uid']);
+      $userId = $this->getUserId($tokedata['uid']);
       $uid = $this->getUid();
       $org = R::load('emailtemplates', $oid);   
       $newName = $this->duplicateTemplateName($org->name);   
@@ -384,13 +384,13 @@ class EmailTemplateController extends BaseController
       $success = true;
       $status = 201;
       $type = "EMAIL_TEMPLATE_DUPLICATED";
-      $logArr = [ "user_id" => $auth['uid'], "new_name" => $newName ];
+      $logArr = [ "user_id" => $tokedata['uid'], "new_name" => $newName ];
       $resArr = ["created_date" => $currentDate, "modified_date" => $currentDate, "subject" => $org->subject, "uid" => $uid, "name" => $newName ]; 
 
     } else{
       $status = 200;
       $type = "EMAIL_TEMPLATE_NOT_DUPLICATED";
-      $logArr = [ "user_id" => $auth['uid'],  "duplicated_from_id" => $args['uid'] ];
+      $logArr = [ "user_id" => $tokedata['uid'],  "duplicated_from_id" => $args['uid'] ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response

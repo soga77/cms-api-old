@@ -68,6 +68,18 @@ abstract class BaseController
     return $id;
   }
 
+  protected function getRoleID($uid) {
+    $arr = RoleController::getRoleByUID($uid);
+    return $arr;
+  }
+
+  protected function getUserRoleNames($id) {
+    $arr = RoleController::getUserRoleNamesByID($id);
+    return $arr;
+  }
+
+  
+
   protected function getRolePermissionID($uid) {
     $id = PermissionController::getRolePermissionByUID($uid);
     return $id;

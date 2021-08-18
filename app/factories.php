@@ -7,6 +7,7 @@ use App\Controllers\EmailTemplateController;
 use App\Controllers\ModuleController;
 use App\Controllers\PageController;
 use App\Controllers\BlockController;
+use App\Controllers\UserAuth;
 use App\Controllers\UserController;
 use App\Controllers\PermissionController;
 use App\Controllers\NotificationController;
@@ -24,6 +25,9 @@ return function (Container $container) {
 	});
 	$container->set('BlockController', function (ContainerInterface $c) {
 		return new BlockController($c);
+	});
+	$container->set('UserAuth', function (ContainerInterface $c) {
+		return new UserAuth($c);
 	});
 	$container->set('UserController', function (ContainerInterface $c) {
 		return new UserController($c);
