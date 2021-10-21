@@ -12,6 +12,7 @@ use App\Controllers\UserController;
 use App\Controllers\PermissionController;
 use App\Controllers\NotificationController;
 use App\Controllers\RoleController;
+use App\Controllers\FileManagerController;
 
 return function (Container $container) {
 	$container->set('EmailTemplateController', function (ContainerInterface $c) {
@@ -41,5 +42,10 @@ return function (Container $container) {
 	$container->set('RoleController', function (ContainerInterface $c) {
 		return new RoleController($c);
 	});
+	$container->set('FileManagerController', function (ContainerInterface $c) {
+		return new FileManagerController($c);
+	});
+
+	
 	
 };

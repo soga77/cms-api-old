@@ -15,7 +15,7 @@ return function(App $app) {
   $logger = $app->getContainer()->get(LoggerInterface::class);
   //JWT
   $app->add(new Tuupola\Middleware\JwtAuthentication([
-    "ignore"=>["/site/user/exist", "/site/user/login", "/site/page/*", "/site/user/register", "/admin/auth/login"],
+    "ignore"=>["/assets/*", "/site/user/exist", "/site/user/login", "/site/page/*", "/site/user/register", "/admin/auth/login"],
     "secret"=> $settings['secret'],
     "secure" => false,
     "logger" => $logger,

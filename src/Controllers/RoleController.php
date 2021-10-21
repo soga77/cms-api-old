@@ -11,7 +11,7 @@ class RoleController extends BaseController
   public function add(Request $request, Response $response) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokendata = $this->getJwtTokenData($headers);
 
     $data = $request->getParsedBody();
     $status = 500;
@@ -22,7 +22,7 @@ class RoleController extends BaseController
 
     // Add Block
     if (empty($vResult)) {
-      $userId = $this->getUserId($tokedata['uid']);
+      $userId = $this->getUserId($tokendata['uid']);
       $currentDate = date('Y-m-d H:i:s');
       $uid = $this->getUid();
       $rb = R::dispense('roles');
@@ -31,7 +31,7 @@ class RoleController extends BaseController
       $rb->alias = $data['alias'];
       $rb->description = $data['description'];
       $rb->created_date = $currentDate;
-      $rb->modified_date = $currentDate;
+      $rb->modified_date = null;
       $rb->created_by = $userId;
       $rb->modified_by = null;
       $id = R::store($rb);
@@ -43,14 +43,14 @@ class RoleController extends BaseController
       $success = true;
       $status = 201;
       $type = "ROLE_ADDED";
-      $logArr = [ "user_id" => $tokedata['uid'] ];
-      $resArr = ["uid" => $uid, "name" => $data['name'], "alias" => $data['alias'], "modified_date" => $currentDate];     
+      $logArr = [ "user_id" => $tokendata['uid'] ];
+      $resArr = ["uid" => $uid, "name" => $data['name'], "alias" => $data['alias'], "created_date" => $currentDate];     
     } 
     // Set validation error(s)
     else {
       $status = 200;
       $type = "ROLE_VALIDATION_ERROR";
-      $logArr = [ "user_id" => $tokedata['uid'],  "validation" => $vResult ];
+      $logArr = [ "user_id" => $tokendata['uid'],  "validation" => $vResult ];
       $resArr = [ "validation" => $vResult ];
     }
     // Return response
@@ -93,6 +93,18 @@ class RoleController extends BaseController
     return $arr;
   }
 
+  static function getUserRoleUIDByID($id) {
+    $arr = [];
+
+    $records = R::findAll('roles', 'WHERE id IN (SELECT role_id from userrolemap WHERE user_id = ?)', [$id]);
+
+    foreach ($records as $record) {
+      array_push($arr, $record->uid);
+    }
+
+    return $arr;
+  }
+
   private function deleteRolePermissions ($id, $arr) {
     foreach ($arr as $perm_uid) {
       $perm_id = $this->getRolePermissionID($perm_uid);
@@ -104,7 +116,7 @@ class RoleController extends BaseController
   public function edit(Request $request, Response $response) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokendata = $this->getJwtTokenData($headers);
 
     $data = $request->getParsedBody();
     $id = $this->getID($data); //get record to update
@@ -143,7 +155,7 @@ class RoleController extends BaseController
 
       if (empty($vResult)) {        
         if (!empty($cArr)) {
-          $userId = $this->getUserId($tokedata['uid']);
+          $userId = $this->getUserId($tokendata['uid']);
           $currentDate = date('Y-m-d H:i:s');
           $rb->modified_date = $currentDate;
           $rb->modified_by = $userId;
@@ -163,24 +175,24 @@ class RoleController extends BaseController
           $success = true;
           $status = 201;
           $type = "ROLE_UPDATED";
-          $logArr = [ "user_id" => $tokedata['uid'], "role_id" => $data['uid'], "changes" => implode(", ", $cArr)];
+          $logArr = [ "user_id" => $tokendata['uid'], "role_id" => $data['uid'], "changes" => implode(", ", $cArr)];
           $resArr = ["uid" => $data['uid'] ,"name" => $data['name'], "alias" => $data['alias'], "created_date" => $createDate, "modified_date" => $currentDate, "changes" => $cArr ]; 
         } else {
           $status = 200;
           $type = "ROLE_NO_CHANGES";
-          $logArr = [ "user_id" => $tokedata['uid'], "role_id" => $data['uid'] ];
+          $logArr = [ "user_id" => $tokendata['uid'], "role_id" => $data['uid'] ];
           $resArr = [ "description" => "No changes made to user role" ]; 
         }
       } else {
         $status = 200;
         $type = "ROLE_VALIDATION_ERROR";
-        $logArr = [ "user_id" => $tokedata['uid'], "role_id" => $data['uid'], "validation" => $vResult ];
+        $logArr = [ "user_id" => $tokendata['uid'], "role_id" => $data['uid'], "validation" => $vResult ];
         $resArr = [ "validation" => $vResult ]; 
       }      
     } else {
       $status = 200;
       $type = "ROLE_NOT_UPDATED";
-      $logArr = [ "user_id" => $tokedata['uid'], "role_id" => $data['uid'] ];
+      $logArr = [ "user_id" => $tokendata['uid'], "role_id" => $data['uid'] ];
       $resArr = [ "description" => "Invalid request recieved" ]; 
     }       
     // Return response
@@ -197,11 +209,14 @@ class RoleController extends BaseController
     $records = R::findAll('roles', ' order by name asc ');
     $row = [];
     foreach ($records as $record) {
+      $permissions=empty($this->getRolePermissionsUid($record->id));
       $row[] = [
         "uid" => $record->uid,
         "name" => $record->name,
         "alias" => $record->alias,
-        "modified_date" => $record->modified_date
+        "has_permissions" => $permissions,
+        "created_date" => $record->created_date,
+        "modified_date" => $record->modified_date,
       ];
     }
     if (empty($row)) {
@@ -258,7 +273,7 @@ class RoleController extends BaseController
   public function delete(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokendata = $this->getJwtTokenData($headers);
 
     $status = 500;
     $success = false;
@@ -276,12 +291,12 @@ class RoleController extends BaseController
       $success = true;
       $status = 200;
       $type = "ROLE_DELETED";
-      $logArr = [ "user_id" => $tokedata['uid'],  "role_id" => $args['uid'], "block_name" => $name ];
+      $logArr = [ "user_id" => $tokendata['uid'],  "role_id" => $args['uid'], "block_name" => $name ];
       $resArr = [ "name" => $name ];
     } else{
       $status = 200;
       $type = "ROLE_NOT_DELETED";
-      $logArr = [ "user_id" => $tokedata['uid'],  "role_id" => $args['uid'], ];
+      $logArr = [ "user_id" => $tokendata['uid'],  "role_id" => $args['uid'], ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response
@@ -293,7 +308,7 @@ class RoleController extends BaseController
   public function item(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokendata = $this->getJwtTokenData($headers);
 
     $id = $this->getID($args);
     $status = 500;
@@ -307,25 +322,27 @@ class RoleController extends BaseController
 
       $rb = R::getAll($sql, [':id' => $id]); 
 
-      $rp = $this->getRolePermissions($id);
-      if (!empty($rp)) {
-        $rb[0]['role_permissions'] = $rp;
-      }
+      //$rp = $this->getRolePermissions($id);
+      // if (!empty($rp)) {
+      //   $rb[0]['role_permissions'] = $rp;
+      // }
+      $rb[0]['role_permissions'] = $this->getRolePermissions($id);
 
-      $srp = $this->getRolePermissionsUid($id);
-      if (!empty($rp)) {
-        $rb[0]['permissions'] = $srp;
-      }
+      // $srp = $this->getRolePermissionsUid($id);
+      // if (!empty($rp)) {
+      //   $rb[0]['permissions'] = $srp;
+      // }
+      $rb[0]['permissions'] = $this->getRolePermissionsUid($id);
 
       $success = true;
       $status = 200;
       $type = "ROLE_FOUND";
-      $logArr = [ "user_id" => $tokedata['uid'],  "role_id" => $args['uid'], "block_name" => $rb[0]['name'] ];
+      $logArr = [ "user_id" => $tokendata['uid'],  "role_id" => $args['uid'], "block_name" => $rb[0]['name'] ];
       $resArr = $rb[0];
     } else{
       $status = 200;
       $type = "ROLE_NOT_FOUND";
-      $logArr = [ "user_id" => $tokedata['uid'],  "role_id" => $args['uid'], ];
+      $logArr = [ "user_id" => $tokendata['uid'],  "role_id" => $args['uid'], ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response
@@ -440,7 +457,7 @@ class RoleController extends BaseController
   public function duplicate(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokendata = $this->getJwtTokenData($headers);
 
     $org_id = $this->getID($args);
     $org_perms = R::findAll('rolepermissionsmap', ' where role_id = ? ', [$org_id]);
@@ -448,7 +465,7 @@ class RoleController extends BaseController
     $success = false;
     
     if ($org_id) {
-      $userId = $this->getUserId($tokedata['uid']);
+      $userId = $this->getUserId($tokendata['uid']);
       $uid = $this->getUid();
       $org = R::load('roles', $org_id);
       $newName = $this->duplicateBlockName($org->name);
@@ -477,13 +494,13 @@ class RoleController extends BaseController
       $success = true;
       $status = 201;
       $type = "ROLE_DUPLICATED";
-      $logArr = [ "user_id" => $tokedata['uid'], "new_name" => $newName, "new_alias" => $newAlias ];
+      $logArr = [ "user_id" => $tokendata['uid'], "new_name" => $newName, "new_alias" => $newAlias ];
       $resArr = ["created_date" => $currentDate, "modified_date" => $currentDate, "uid" => $uid, "name" => $newName, "alias" => $newAlias ]; 
 
     } else{
       $status = 200;
       $type = "ROLE_NOT_DUPLICATED";
-      $logArr = [ "user_id" => $tokedata['uid'],  "duplicated_from_id" => $args['uid'] ];
+      $logArr = [ "user_id" => $tokendata['uid'],  "duplicated_from_id" => $args['uid'] ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response

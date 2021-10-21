@@ -18,9 +18,13 @@ abstract class BaseController
 
   protected $logger;
 
+  protected $fileManager;
+
+
   public function __construct(ContainerInterface $container)
 	{
     $this->settings = $container->get('settings');
+    $this->fileManager = $this->settings['fileManager'];
     $this->logger = $container->get(LoggerInterface::class);
   }
 
@@ -38,6 +42,14 @@ abstract class BaseController
     $response->getBody()->write($json);
     return $response
       ->withHeader('Content-Type', 'application/json')
+      ->withStatus($status);
+  }
+
+  protected function respondWithString(Response $response, $payload, $status = 200)
+  {
+    $json = json_encode($payload, JSON_PRETTY_PRINT);
+    $response->getBody()->write($json);
+    return $response
       ->withStatus($status);
   }
 
@@ -63,6 +75,11 @@ abstract class BaseController
     return $id;
   }
 
+  protected function slugify($string) {
+    $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $string)));
+    return $slug;
+  }
+
   protected function getTemplateID($args) {
     $id = EmailTemplateController::getTemplateByUID($args);
     return $id;
@@ -77,7 +94,11 @@ abstract class BaseController
     $arr = RoleController::getUserRoleNamesByID($id);
     return $arr;
   }
-
+  
+  protected function getUserRole($id) {
+    $arr = RoleController::getUserRoleUIDByID($id);
+    return $arr;
+  }
   
 
   protected function getRolePermissionID($uid) {

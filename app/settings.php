@@ -39,6 +39,17 @@ return function (Container $container) {
 			"jwt" => [
 				"secret"=> "supersecretkeyyoushouldnotcommittogithub",
 			],
+			"fileManager" => [
+				"path" => "/../resources/",
+				"allowedType" => ['image/gif', 'image/jpeg', 'image/jpg', 'image/png', 'application/pdf'],
+				"maxSize" => 4*1024*1024,
+				"outputFile" => [ "type" => "image/jpg", "ext" => "jpg" ],
+				"imageSize" => [ 
+					"small" => [ "width" => 300, "height" => 300, "prefix" => "sm-" ], 
+					"medium" => [ "width" => 600, "height" => 600, "prefix" => "md-" ], 
+					"large" => [ "width" => 900, "height" => 900, "prefix" => "lg-" ]
+				]
+			],
 			"general" => [
 				"clientUrl" => "http://localhost:8080",
 				"verifyEmailUrl" => "http://localhost:8080/verify-email/"

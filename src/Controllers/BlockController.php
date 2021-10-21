@@ -11,9 +11,10 @@ class BlockController extends BaseController
   public function add(Request $request, Response $response) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokenData = $this->getJwtTokenData($headers);
 
     $data = $request->getParsedBody();
+    $data['alias'] = isset($data['name']) ? $this->slugify($data['name']) : '';
     $status = 500;
     $success = false;
     
@@ -22,9 +23,10 @@ class BlockController extends BaseController
 
     // Add Block
     if (empty($vResult)) {
-      $userId = $this->getUserId($tokedata['uid']);
+      $userId = $this->getUserId($tokenData['uid']);
       $currentDate = date('Y-m-d H:i:s');
       $uid = $this->getUid();
+      $alias = $this->slugify($data['name']);
       $rb = R::dispense('blocks');
       $rb->uid = $uid;
       $rb->name = $data['name'];
@@ -33,7 +35,7 @@ class BlockController extends BaseController
       $rb->parent_id = 0;
       $rb->version_no = 0;
       $rb->created_date = $currentDate;
-      $rb->modified_date = $currentDate;
+      $rb->modified_date = null;
       $rb->created_by = $userId;
       $rb->modified_by = null;
       $id = R::store($rb);
@@ -41,14 +43,14 @@ class BlockController extends BaseController
       $success = true;
       $status = 201;
       $type = "BLOCK_ADDED";
-      $logArr = [ "user_id" => $tokedata['uid'] ];
-      $resArr = ["uid" => $uid, "name" => $data['name'], "alias" => $data['alias'], "modified_date" => $currentDate];     
+      $logArr = [ "owner" => $tokenData['uid'] ];
+      $resArr = ["uid" => $uid, "name" => $data['name'], "alias" => $alias, "created_date" => $currentDate];     
     } 
     // Set validation error(s)
     else {
       $status = 200;
       $type = "BLOCK_VALIDATION_ERROR";
-      $logArr = [ "user_id" => $tokedata['uid'],  "validation" => $vResult ];
+      $logArr = [ "owner" => $tokenData['uid'],  "validation" => $vResult ];
       $resArr = [ "validation" => $vResult ];
     }
     // Return response
@@ -81,7 +83,7 @@ class BlockController extends BaseController
   public function edit(Request $request, Response $response) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokenData = $this->getJwtTokenData($headers);
 
     $data = $request->getParsedBody();
     $id = $this->getID($data); //get record to update
@@ -93,17 +95,14 @@ class BlockController extends BaseController
       $cArr = [];
       $rb = R::load('blocks', $id);
       $name = strtolower($rb->name);
-      $alias = strtolower($rb->alias);
       $content = strtolower($rb->content);
       $createDate = $rb->created_date;
+      $data['alias'] = isset($data['name']) ? $this->slugify($data['name']) : '';
 
       if (isset($data['name']) && strtolower($data['name']) !== $name) {
         $rb->name = $data['name'];
-        array_push($cArr, 'name');
-      }
-      if (isset($data['alias']) && strtolower($data['alias']) !== $alias) {
         $rb->alias = $data['alias'];
-        array_push($cArr, 'alias');
+        array_push($cArr, 'name');
       }
       if (isset($data['content']) && strtolower($data['content']) !== $content) {
         $rb->content = $data['content'];
@@ -116,7 +115,7 @@ class BlockController extends BaseController
       if (empty($vResult)) {        
         if (!empty($cArr)) {
           $this->createVersion($id);
-          $userId = $this->getUserId($tokedata['uid']);
+          $userId = $this->getUserId($tokenData['uid']);
           $currentDate = date('Y-m-d H:i:s');
           $rb->modified_date = $currentDate;
           $rb->modified_by = $userId;
@@ -125,24 +124,24 @@ class BlockController extends BaseController
           $success = true;
           $status = 201;
           $type = "BLOCK_UPDATED";
-          $logArr = [ "user_id" => $tokedata['uid'], "block_id" => $data['uid'], "changes" => implode(", ", $cArr)];
+          $logArr = [ "user_id" => $tokenData['uid'], "block_id" => $data['uid'], "changes" => implode(", ", $cArr)];
           $resArr = ["uid" => $data['uid'] ,"name" => $data['name'], "alias" => $data['alias'], "created_date" => $createDate, "modified_date" => $currentDate, "changes" => $cArr ]; 
         } else {
           $status = 200;
           $type = "BLOCK_NO_CHANGES";
-          $logArr = [ "user_id" => $tokedata['uid'], "block_id" => $data['uid'] ];
+          $logArr = [ "user_id" => $tokenData['uid'], "block_id" => $data['uid'] ];
           $resArr = [ "description" => "No changes made to block" ]; 
         }
       } else {
         $status = 200;
         $type = "BLOCK_VALIDATION_ERROR";
-        $logArr = [ "user_id" => $tokedata['uid'], "block_id" => $data['uid'], "validation" => $vResult ];
+        $logArr = [ "user_id" => $tokenData['uid'], "block_id" => $data['uid'], "validation" => $vResult ];
         $resArr = [ "validation" => $vResult ]; 
       }      
     } else {
       $status = 200;
       $type = "BLOCK_NOT_UPDATED";
-      $logArr = [ "user_id" => $tokedata['uid'], "block_id" => $data['uid'] ];
+      $logArr = [ "user_id" => $tokenData['uid'], "block_id" => $data['uid'] ];
       $resArr = [ "description" => "Invalid request recieved" ]; 
     }       
     // Return response
@@ -164,7 +163,8 @@ class BlockController extends BaseController
         "name" => $record->name,
         "alias" => $record->alias,
         "content" => $record->content,
-        "modified_date" => $record->modified_date
+        "modified_date" => $record->modified_date,
+        "created_date" => $record->created_date
       ];
     }
     if (empty($row)) {
@@ -233,7 +233,7 @@ class BlockController extends BaseController
   public function delete(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokenData = $this->getJwtTokenData($headers);
 
     $status = 500;
     $success = false;
@@ -251,12 +251,12 @@ class BlockController extends BaseController
       $success = true;
       $status = 200;
       $type = "BLOCK_DELETED";
-      $logArr = [ "user_id" => $tokedata['uid'],  "block_id" => $args['uid'], "block_name" => $name ];
+      $logArr = [ "user_id" => $tokenData['uid'],  "block_id" => $args['uid'], "block_name" => $name ];
       $resArr = [ "name" => $name ];
     } else{
       $status = 200;
       $type = "BLOCK_NOT_DELETED";
-      $logArr = [ "user_id" => $tokedata['uid'],  "block_id" => $args['uid'], ];
+      $logArr = [ "user_id" => $tokenData['uid'],  "block_id" => $args['uid'], ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response
@@ -268,7 +268,7 @@ class BlockController extends BaseController
   public function item(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokenData = $this->getJwtTokenData($headers);
 
     $id = $this->getID($args);
     $status = 500;
@@ -286,12 +286,12 @@ class BlockController extends BaseController
       $success = true;
       $status = 200;
       $type = "BLOCK_FOUND";
-      $logArr = [ "user_id" => $tokedata['uid'],  "block_id" => $args['uid'], "block_name" => $rb[0]['name'] ];
+      $logArr = [ "user_id" => $tokenData['uid'],  "block_id" => $args['uid'], "block_name" => $rb[0]['name'] ];
       $resArr = $rb[0];
     } else{
       $status = 200;
       $type = "BLOCK_NOT_FOUND";
-      $logArr = [ "user_id" => $tokedata['uid'],  "block_id" => $args['uid'], ];
+      $logArr = [ "user_id" => $tokenData['uid'],  "block_id" => $args['uid'], ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response
@@ -303,14 +303,14 @@ class BlockController extends BaseController
   public function duplicate(Request $request, Response $response, $args) {
     // Authorization
     $headers = $request->getHeaders();
-    $tokedata = $this->getJwtTokenData($headers);
+    $tokenData = $this->getJwtTokenData($headers);
 
     $org_id = $this->getID($args);
     $status = 500;
     $success = false;
     
     if ($org_id) {
-      $userId = $this->getUserId($tokedata['uid']);
+      $userId = $this->getUserId($tokenData['uid']);
       $uid = $this->getUid();
       $org = R::load('blocks', $org_id);
       $newName = $this->duplicateBlockName($org->name);
@@ -332,13 +332,13 @@ class BlockController extends BaseController
       $success = true;
       $status = 201;
       $type = "BLOCK_DUPLICATED";
-      $logArr = [ "user_id" => $tokedata['uid'], "new_name" => $newName, "new_alias" => $newAlias ];
+      $logArr = [ "user_id" => $tokenData['uid'], "new_name" => $newName, "new_alias" => $newAlias ];
       $resArr = ["created_date" => $currentDate, "modified_date" => $currentDate, "uid" => $uid, "name" => $newName, "alias" => $newAlias ]; 
 
     } else{
       $status = 200;
       $type = "BLOCK_NOT_DUPLICATED";
-      $logArr = [ "user_id" => $tokedata['uid'],  "duplicated_from_id" => $args['uid'] ];
+      $logArr = [ "user_id" => $tokenData['uid'],  "duplicated_from_id" => $args['uid'] ];
       $resArr = [ "uid" => $args['uid'] ];
     }    
     // Return response
@@ -348,7 +348,14 @@ class BlockController extends BaseController
   }
 
   private function duplicateBlockName($name, $count = 0){
-    $newName = $name.' Copy'.(($count == 0) ? '' : ' '.$count);
+    $pos = strripos($name, " Copy");
+    if (!$pos) {
+      $newName = $name.' Copy'.(($count == 0) ? '' : ' '.$count);
+    } else {
+      $start = substr($name, 0, $pos);
+      $newName = $start.' Copy'.(($count == 0) ? '' : ' '.$count);
+    }
+
     $rb  = R::findOne( 'blocks', ' name LIKE ? ', [$newName]); 
     if (empty($rb->id)) {
       return $newName;
@@ -359,7 +366,14 @@ class BlockController extends BaseController
   }
 
   private function duplicateBlockAlias($alias, $count = 0){
-    $newAlias = $alias.'-copy'.(($count == 0) ? '' : '-'.$count);
+    $pos = strripos($alias, "-copy");
+    if (!$pos) {
+      $newAlias = $alias.'-copy'.(($count == 0) ? '' : '-'.$count);
+    } else {
+      $start = substr($alias, 0, $pos);
+      $newAlias = $start.'-copy'.(($count == 0) ? '' : '-'.$count);
+    }
+
     $rb  = R::findOne( 'blocks', ' alias LIKE ? ', [$newAlias]); 
     if (empty($rb->id)) {
       return $newAlias;
@@ -373,14 +387,15 @@ class BlockController extends BaseController
     $data = $request->getParsedBody();
     $id = $this->getID($data); 
     $name = $data['name'];
+    $alias = $this->slugify($data['name']);
 
     $status = 500;
     $success = false;
 
     if ($id) {
-      $rb  = R::findOne( 'blocks', 'name LIKE ? AND id != ?', [$name, $id]); 
+      $rb  = R::findOne( 'blocks', 'name LIKE ? AND alias LIKE ? AND id != ?', [$name, $alias, $id]); 
     } else {
-      $rb  = R::findOne( 'blocks', 'name LIKE ?', [$name]); 
+      $rb  = R::findOne( 'blocks', 'name LIKE ? AND alias LIKE ?', [$name, $alias]); 
     }
 
     if (empty($rb)) {
@@ -398,34 +413,34 @@ class BlockController extends BaseController
     return $this->respondWithData($response,$result,$status);
   }
 
-  public function aliasExist(Request $request, Response $response) {
-    $data = $request->getParsedBody();
-    $id = $this->getID($data); 
-    $alias = $data['alias'];
+  // public function aliasExist(Request $request, Response $response) {
+  //   $data = $request->getParsedBody();
+  //   $id = $this->getID($data); 
+  //   $alias = $data['alias'];
 
-    $status = 500;
-    $success = false;
+  //   $status = 500;
+  //   $success = false;
 
-    if ($id) {
-      $rb  = R::findOne( 'blocks', 'alias LIKE ? AND id != ?', [$alias, $id]); 
-    } else {
-      $rb  = R::findOne( 'blocks', 'alias LIKE ?', [$alias]); 
-    }
+  //   if ($id) {
+  //     $rb  = R::findOne( 'blocks', 'alias LIKE ? AND id != ?', [$alias, $id]); 
+  //   } else {
+  //     $rb  = R::findOne( 'blocks', 'alias LIKE ?', [$alias]); 
+  //   }
 
-    if (empty($rb)) {
-      $success = true;
-      $status = 200;
-      $type = "BLOCK_ALIAS_NOT_FOUND";
-    } else {
-      $success = true;
-      $status = 200;
-      $type = "BLOCK_ALIAS_FOUND";
-    }
+  //   if (empty($rb)) {
+  //     $success = true;
+  //     $status = 200;
+  //     $type = "BLOCK_ALIAS_NOT_FOUND";
+  //   } else {
+  //     $success = true;
+  //     $status = 200;
+  //     $type = "BLOCK_ALIAS_FOUND";
+  //   }
     
-    // Return response
-    $result = [ "success" => $success, "status" => $status, "type" => $type ];
-    return $this->respondWithData($response,$result,$status);
-  }
+  //   // Return response
+  //   $result = [ "success" => $success, "status" => $status, "type" => $type ];
+  //   return $this->respondWithData($response,$result,$status);
+  // }
 
   private function getID($args) {
     $result = false;
@@ -443,6 +458,7 @@ class BlockController extends BaseController
       $param['name'] = [
         "value" => [
           "value" => isset($data['name'])? $data['name'] : '',
+          "alias" => isset($data['alias'])? $data['alias'] : ''
         ],        
         "type" => [ 
           "isEmpty" => "Name is required",
@@ -458,29 +474,14 @@ class BlockController extends BaseController
           "isEmpty" => "Name is required"
         ]
       ];
-    }    
-    if (is_null($cArr) || isset($cArr['alias'])) {
-      $param['alias'] = [
-        "value" => [
-          "value" => isset($data['alias'])? $data['alias'] : '',
-        ],        
-        "type" => [ 
-          "isEmpty" => "Alias is required",
-          "isNotAlias" => "Invalid alias format",
-          "isBlockAliasExist" => "Alias already exist"
-        ]
-      ];
-    } else {
-      $param['alias'] = [
-        "value" => [
-          "value" => isset($data['alias'])? $data['alias'] : '',
-        ],        
-        "type" => [ 
-          "isEmpty" => "Alias is required",
-          "isNotAlias" => "Invalid alias format",
-        ]
-      ];
     }
+
+    $param['content'] = [
+      "value" => [
+        "value" => isset($data['content'])? $data['content'] : '',
+      ],      
+      "type" => [ "isEmpty" => "Content is required"]
+    ];
 
     return $this->validateData($param);
   }

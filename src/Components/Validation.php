@@ -75,13 +75,13 @@ class Validation
     return (!empty($rb->id)) ? true : false;
   }
   private function isBlockNameExist($value) {
-    $rb  = R::findOne( 'blocks', ' name LIKE ? ', [$value['value']]); 
+    $rb  = R::findOne( 'blocks', ' name LIKE ? AND alias LIKE ? ', [$value['value'], $value['alias']]); 
     return (!empty($rb->id)) ? true : false;
   }
-  private function isBlockAliasExist($value) {
-    $rb  = R::findOne( 'blocks', ' alias LIKE ? ', [$value['value']]); 
-    return (!empty($rb->id)) ? true : false;
-  }
+  // private function isBlockAliasExist($value) {
+  //   $rb  = R::findOne( 'blocks', ' alias LIKE ? ', [$value['value']]); 
+  //   return (!empty($rb->id)) ? true : false;
+  // }
   private function isPermissionAliasExist($value) {
     $rb  = R::findOne( 'permissions', ' module_id = ? AND alias LIKE ? ', [$value['id'], $value['value']]); 
     return (!empty($rb->id)) ? true : false;
@@ -98,5 +98,8 @@ class Validation
     $rb  = R::findOne( 'roles', ' alias LIKE ? ', [$value['value']]); 
     return (!empty($rb->id)) ? true : false;
   }
-
+  private function isFolderNameExist($value) {
+    $rb  = R::findOne( 'filemanager', ' type = ? AND name LIKE ? AND slug  LIKE ? AND parent_id = ? ', ['folder', $value['value'], $value['slug'], $value['pid']]); 
+    return (!empty($rb->id)) ? true : false;
+  }
 }

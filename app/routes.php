@@ -17,6 +17,10 @@ return function (App $app) {
     return $response;
   });  
 
+  $app->group('/assets', function (Group $group) {
+    $group->get('/image/{size}/{slug}', FileManagerController::class . ':image');
+  });  
+
   $app->group('/admin', function (Group $group) {
     // $group->group('/pages', function (Group $group) {
     //   $group->post('/add', PageController::class . ':add');
@@ -99,14 +103,23 @@ return function (App $app) {
     });
 
     $group->group('/users', function (Group $group) {
-      // $group->get('/item/{uid}', UserController::class . ':item');
+      $group->get('/item/{uid}', UserController::class . ':item');
       $group->get('/items', UserController::class . ':items');
-      // $group->get('/roles', UserController::class . ':roles');
       $group->post('/add',  UserController::class . ':add');
       // $group->post('/edit',  UserController::class . ':edit');
-      // $group->delete('/delete/{uid}',  UserController::class . ':delete'); 
+      $group->post('/edit-account',  UserController::class . ':account');
+      $group->post('/pwd-change',  UserController::class . ':pwdChange');
+      $group->delete('/delete/{uid}',  UserController::class . ':delete'); 
       $group->post('/email-exist',  UserController::class . ':emailExist');     
       // $group->post('/alias-exist',  UserController::class . ':aliasExist');
+    });
+
+    $group->group('/file-manager', function (Group $group) {
+      $group->post('/add-folder',  FileManagerController::class . ':addFolder');
+      $group->post('/upload-file',  FileManagerController::class . ':uploadFile');
+      $group->get('/items', FileManagerController::class . ':items');
+      $group->post('/folder-exist',  FileManagerController::class . ':folderExist');
+      $group->delete('/delete/{uid}',  FileManagerController::class . ':delete'); 
     });
   });
 
